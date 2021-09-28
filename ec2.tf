@@ -284,6 +284,9 @@ resource "aws_flow_log" "vpcflowlogs" {
 resource "aws_s3_bucket" "flowbucket" {
   bucket        = "${local.resource_prefix.value}-flowlogs"
   force_destroy = true
+   versioning {
+   enabled    = true
+ }
 
   tags = merge({
     Name        = "${local.resource_prefix.value}-flowlogs"
@@ -304,6 +307,9 @@ resource "aws_s3_bucket_public_access_block" "access_good_1" {
 
   block_public_acls   = true
   block_public_policy = true
+   versioning {
+   enabled    = true
+  }
 }
 
 output "ec2_public_dns" {
