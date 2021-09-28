@@ -34,7 +34,7 @@ EOF
 resource "aws_ebs_volume" "web_host_storage" {
   # unencrypted volume
   availability_zone = "${var.region}a"
-  #encrypted         = false  # Setting this causes the volume to be recreated on apply 
+  encrypted         = true  # Setting this causes the volume to be recreated on apply 
   size = 1
   tags = merge({
     Name = "${local.resource_prefix.value}-ebs"
@@ -54,6 +54,7 @@ resource "aws_ebs_snapshot" "example_snapshot" {
   # ebs snapshot without encryption
   volume_id   = "${aws_ebs_volume.web_host_storage.id}"
   description = "${local.resource_prefix.value}-ebs-snapshot"
+   encrypted         = true
   tags = merge({
     Name = "${local.resource_prefix.value}-ebs-snapshot"
     }, {
@@ -156,7 +157,6 @@ resource "aws_subnet" "web_subnet2" {
   vpc_id                  = aws_vpc.web_vpc.id
   cidr_block              = "172.16.11.0/24"
   availability_zone       = "${var.region}b"
-  #map_public_ip_on_launch = true
 
   tags = merge({
     Name = "${local.resource_prefix.value}-subnet2"
