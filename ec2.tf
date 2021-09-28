@@ -34,7 +34,7 @@ EOF
 resource "aws_ebs_volume" "web_host_storage" {
   # unencrypted volume
   availability_zone = "${var.region}a"
-  encrypted         = true  # Setting this causes the volume to be recreated on apply 
+  #encrypted         = false  # Setting this causes the volume to be recreated on apply 
   size = 1
   tags = merge({
     Name = "${local.resource_prefix.value}-ebs"
@@ -49,25 +49,11 @@ resource "aws_ebs_volume" "web_host_storage" {
     yor_trace            = "c5509daf-10f0-46af-9e03-41989212521d"
   })
 }
-resource "aws_ebs_volume" "ok_ebs2" {
-  availability_zone = ""
-  encrypted = true
-}
-resource "aws_backup_selection" "backup_good" {
-  iam_role_arn = "arn"
-  name         = "tf_example_backup_selection"
-  plan_id      = "123456"
-
-  resources = [
-    aws_ebs_volume.web_host_storage.arn
-  ]
-}
 
 resource "aws_ebs_snapshot" "example_snapshot" {
   # ebs snapshot without encryption
   volume_id   = "${aws_ebs_volume.web_host_storage.id}"
   description = "${local.resource_prefix.value}-ebs-snapshot"
-   encrypted         = true
   tags = merge({
     Name = "${local.resource_prefix.value}-ebs-snapshot"
     }, {
@@ -170,6 +156,7 @@ resource "aws_subnet" "web_subnet2" {
   vpc_id                  = aws_vpc.web_vpc.id
   cidr_block              = "172.16.11.0/24"
   availability_zone       = "${var.region}b"
+  map_public_ip_on_launch = true
 
   tags = merge({
     Name = "${local.resource_prefix.value}-subnet2"
@@ -284,9 +271,6 @@ resource "aws_flow_log" "vpcflowlogs" {
 resource "aws_s3_bucket" "flowbucket" {
   bucket        = "${local.resource_prefix.value}-flowlogs"
   force_destroy = true
-   versioning {
-   enabled    = true
- }
 
   tags = merge({
     Name        = "${local.resource_prefix.value}-flowlogs"
@@ -301,14 +285,8 @@ resource "aws_s3_bucket" "flowbucket" {
     git_repo             = "terragoat"
     yor_trace            = "f058838a-b1e0-4383-b965-7e06e987ffb1"
   })
-}
-resource "aws_s3_bucket_public_access_block" "access_good_1" {
-  bucket = aws_s3_bucket.flowbucket.id
-
-  block_public_acls   = true
-  block_public_policy = true
-   versioning {
-   enabled    = true
+  versioning {
+    enabled = true
   }
 }
 
