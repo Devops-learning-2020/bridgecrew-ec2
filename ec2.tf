@@ -49,6 +49,19 @@ resource "aws_ebs_volume" "web_host_storage" {
     yor_trace            = "c5509daf-10f0-46af-9e03-41989212521d"
   })
 }
+resource "aws_ebs_volume" "ok_ebs2" {
+  availability_zone = ""
+  encrypted = true
+}
+resource "aws_backup_selection" "backup_good" {
+  iam_role_arn = "arn"
+  name         = "tf_example_backup_selection"
+  plan_id      = "123456"
+
+  resources = [
+    aws_ebs_volume.web_host_storage.arn
+  ]
+}
 
 resource "aws_ebs_snapshot" "example_snapshot" {
   # ebs snapshot without encryption
@@ -285,6 +298,12 @@ resource "aws_s3_bucket" "flowbucket" {
     git_repo             = "terragoat"
     yor_trace            = "f058838a-b1e0-4383-b965-7e06e987ffb1"
   })
+}
+resource "aws_s3_bucket_public_access_block" "access_good_1" {
+  bucket = aws_s3_bucket.flowbucket.id
+
+  block_public_acls   = true
+  block_public_policy = true
 }
 
 output "ec2_public_dns" {
