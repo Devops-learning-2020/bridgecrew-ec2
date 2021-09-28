@@ -284,7 +284,14 @@ resource "aws_flow_log" "vpcflowlogs" {
 resource "aws_s3_bucket" "flowbucket" {
   bucket        = "${local.resource_prefix.value}-flowlogs"
   force_destroy = true
-
+  dynamic "logging" {
+   for_each = var.logging
+   content {
+     target_bucket = logging.value["target_bucket"]
+     target_prefix = "log/${var.s3_bucket_name}"
+  }
+ }
+}
   tags = merge({
     Name        = "${local.resource_prefix.value}-flowlogs"
     Environment = local.resource_prefix.value
@@ -299,6 +306,7 @@ resource "aws_s3_bucket" "flowbucket" {
     yor_trace            = "f058838a-b1e0-4383-b965-7e06e987ffb1"
   })
 }
+
 resource "aws_s3_bucket_public_access_block" "access_good_1" {
   bucket = aws_s3_bucket.flowbucket.id
 
