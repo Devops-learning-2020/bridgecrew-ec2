@@ -346,7 +346,7 @@ resource "aws_s3_bucket" "flowbucket" {
 }
 resource "aws_s3_bucket_public_access_block" "access_good_1" {
   bucket = aws_s3_bucket.flowbucket.id
-
+  restrict_public_buckets = true
   block_public_acls   = true
   block_public_policy = true
 }
