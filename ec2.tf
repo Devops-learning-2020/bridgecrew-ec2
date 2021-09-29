@@ -2,6 +2,15 @@ resource "aws_instance" "web_host" {
   # ec2 have plain text secrets in user data
   ami           = "${var.ami}"
   instance_type = "t2.nano"
+   root_block_device {
+   encrypted     = true
+ }
+  ebs_optimized = true
+  monitoring = true
+  metadata_options{
+      http_endpoint = "disabled"
+      
+  }
 
   vpc_security_group_ids = [
   "${aws_security_group.web-node.id}"]
@@ -12,9 +21,6 @@ sudo apt-get update
 sudo apt-get install -y apache2
 sudo systemctl start apache2
 sudo systemctl enable apache2
-export AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMAAA
-export AWS_SECRET_ACCESS_KEY=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
-export AWS_DEFAULT_REGION=us-west-2
 echo "<h1>Deployed via Terraform</h1>" | sudo tee /var/www/html/index.html
 EOF
   tags = merge({
@@ -34,7 +40,7 @@ EOF
 resource "aws_ebs_volume" "web_host_storage" {
   # unencrypted volume
   availability_zone = "${var.region}a"
-  #encrypted         = false  # Setting this causes the volume to be recreated on apply 
+  encrypted         = true  # Setting this causes the volume to be recreated on apply 
   size = 1
   tags = merge({
     Name = "${local.resource_prefix.value}-ebs"
@@ -48,6 +54,15 @@ resource "aws_ebs_volume" "web_host_storage" {
     git_repo             = "terragoat"
     yor_trace            = "c5509daf-10f0-46af-9e03-41989212521d"
   })
+}
+resource "aws_backup_selection" "backup_good" {
+  iam_role_arn = "arn"
+  name         = "tf_example_backup_selection"
+  plan_id      = "123456"
+
+  resources = [
+    aws_ebs_volume.web_host_storage.arn
+  ]
 }
 
 resource "aws_ebs_snapshot" "example_snapshot" {
@@ -81,25 +96,28 @@ resource "aws_security_group" "web-node" {
   vpc_id      = aws_vpc.web_vpc.id
 
   ingress {
+    description = "inbound"
     from_port = 80
     to_port   = 80
     protocol  = "tcp"
     cidr_blocks = [
-    "0.0.0.0/0"]
+    "10.0.0.1/32"]
   }
   ingress {
+    description = "inbound"
     from_port = 22
     to_port   = 22
     protocol  = "tcp"
     cidr_blocks = [
-    "0.0.0.0/0"]
+    "10.0.0.1/32"]
   }
   egress {
+    description = "outbound"
     from_port = 0
     to_port   = 0
     protocol  = "-1"
     cidr_blocks = [
-    "0.0.0.0/0"]
+    "10.0.0.1/32"]
   }
   depends_on = [aws_vpc.web_vpc]
   tags = {
@@ -131,12 +149,15 @@ resource "aws_vpc" "web_vpc" {
     yor_trace            = "9bf2359b-952e-4570-9595-52eba4c20473"
   })
 }
+resource "aws_default_security_group" "default" {
+  vpc_id = aws_vpc.web_vpc.id
+}
 
 resource "aws_subnet" "web_subnet" {
   vpc_id                  = aws_vpc.web_vpc.id
   cidr_block              = "172.16.10.0/24"
   availability_zone       = "${var.region}a"
-  map_public_ip_on_launch = true
+  map_public_ip_on_launch = false
 
   tags = merge({
     Name = "${local.resource_prefix.value}-subnet"
@@ -156,7 +177,7 @@ resource "aws_subnet" "web_subnet2" {
   vpc_id                  = aws_vpc.web_vpc.id
   cidr_block              = "172.16.11.0/24"
   availability_zone       = "${var.region}b"
-  map_public_ip_on_launch = true
+  map_public_ip_on_launch = false
 
   tags = merge({
     Name = "${local.resource_prefix.value}-subnet2"
@@ -267,10 +288,47 @@ resource "aws_flow_log" "vpcflowlogs" {
     yor_trace            = "6808d4b7-45bc-4d1d-9523-96757a3add3a"
   })
 }
-
+resource "aws_kms_key" "s3key" {
+  description             = "KMS key 1"
+  enable_key_rotation = true
+}
 resource "aws_s3_bucket" "flowbucket" {
   bucket        = "${local.resource_prefix.value}-flowlogs"
   force_destroy = true
+  restrict_public_buckets = true
+  
+  versioning {
+    enabled = true
+  }
+  replication_configuration {
+   role = aws_iam_role.replication.arn
+    rules {
+    id     = "foobar"
+      prefix = "foo"
+       status = "Enabled"
+
+   destination {
+      bucket        = aws_s3_bucket.destination.arn
+      storage_class = "STANDARD"
+    }
+   }
+ }
+   server_side_encryption_configuration {
+  rule {
+     apply_server_side_encryption_by_default {
+       kms_master_key_id = aws_kms_key.s3key.arn
+       sse_algorithm     = "aws:kms"
+      }
+  }
+  }
+   dynamic "logging" {
+    for_each = var.logging
+    content {
+       target_bucket = logging.value["target_bucket"]
+       target_prefix = "log/${var.s3_bucket_name}"
+      }
+ }
+ 
 
   tags = merge({
     Name        = "${local.resource_prefix.value}-flowlogs"
@@ -285,6 +343,13 @@ resource "aws_s3_bucket" "flowbucket" {
     git_repo             = "terragoat"
     yor_trace            = "f058838a-b1e0-4383-b965-7e06e987ffb1"
   })
+}
+resource "aws_s3_bucket_public_access_block" "access_good_1" {
+  bucket = aws_s3_bucket.flowbucket.id
+  restrict_public_buckets = true
+  ignore_public_acls= true
+  block_public_acls   = true
+  block_public_policy = true
 }
 
 output "ec2_public_dns" {
