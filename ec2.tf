@@ -344,7 +344,12 @@ resource "aws_s3_bucket" "flowbucket" {
     yor_trace            = "f058838a-b1e0-4383-b965-7e06e987ffb1"
   })
 }
+resource "aws_s3_bucket_public_access_block" "access_good_1" {
+  bucket = aws_s3_bucket.flowbucket.id
 
+  block_public_acls   = true
+  block_public_policy = true
+}
 
 output "ec2_public_dns" {
   description = "Web Host Public DNS name"
