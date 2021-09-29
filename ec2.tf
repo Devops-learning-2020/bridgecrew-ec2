@@ -6,7 +6,7 @@ resource "aws_instance" "web_host" {
   encrypted= true
   monitoring = true
   metadata_options{
-      http_endpoint = "enabled"
+      http_endpoint = "disabled"
       
   }
 
