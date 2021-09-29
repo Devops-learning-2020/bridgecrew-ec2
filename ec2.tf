@@ -288,7 +288,10 @@ resource "aws_flow_log" "vpcflowlogs" {
     yor_trace            = "6808d4b7-45bc-4d1d-9523-96757a3add3a"
   })
 }
-
+resource "aws_kms_key" "s3key" {
+  description             = "KMS key 1"
+  deletion_window_in_days = 10
+}
 resource "aws_s3_bucket" "flowbucket" {
   bucket        = "${local.resource_prefix.value}-flowlogs"
   force_destroy = true
@@ -318,7 +321,7 @@ resource "aws_s3_bucket" "flowbucket" {
   server_side_encryption_configuration {
   rule {
      apply_server_side_encryption_by_default {
-       kms_master_key_id = aws_kms_key.mykey.arn
+       kms_master_key_id = aws_kms_key.s3key.arn
        sse_algorithm     = "aws:kms"
       }
   }
