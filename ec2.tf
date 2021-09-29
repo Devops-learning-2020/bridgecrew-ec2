@@ -290,7 +290,6 @@ resource "aws_flow_log" "vpcflowlogs" {
 }
 resource "aws_kms_key" "s3key" {
   description             = "KMS key 1"
-  deletion_window_in_days = 10
 }
 resource "aws_s3_bucket" "flowbucket" {
   bucket        = "${local.resource_prefix.value}-flowlogs"
@@ -345,8 +344,8 @@ resource "aws_s3_bucket" "flowbucket" {
 resource "aws_s3_bucket_public_access_block" "access_good_1" {
   bucket = aws_s3_bucket.flowbucket.id
 
-  block_public_acls   = true
-  block_public_policy = true
+  block_public_acls   = false
+  block_public_policy = false
 }
 
 output "ec2_public_dns" {
