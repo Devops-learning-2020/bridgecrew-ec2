@@ -290,10 +290,13 @@ resource "aws_flow_log" "vpcflowlogs" {
 }
 resource "aws_kms_key" "s3key" {
   description             = "KMS key 1"
+  enable_key_rotation = true
 }
 resource "aws_s3_bucket" "flowbucket" {
   bucket        = "${local.resource_prefix.value}-flowlogs"
   force_destroy = true
+  restrict_public_buckets = true
+  
   versioning {
     enabled = true
   }
@@ -341,12 +344,7 @@ resource "aws_s3_bucket" "flowbucket" {
     yor_trace            = "f058838a-b1e0-4383-b965-7e06e987ffb1"
   })
 }
-resource "aws_s3_bucket_public_access_block" "access_good_1" {
-  bucket = aws_s3_bucket.flowbucket.id
 
-  block_public_acls   = false
-  block_public_policy = false
-}
 
 output "ec2_public_dns" {
   description = "Web Host Public DNS name"
