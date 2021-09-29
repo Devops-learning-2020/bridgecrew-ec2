@@ -2,6 +2,13 @@ resource "aws_instance" "web_host" {
   # ec2 have plain text secrets in user data
   ami           = "${var.ami}"
   instance_type = "t2.nano"
+  ebs_optimized = true
+  encrypted= true
+  monitoring = true
+  metadata_options{
+      http_endpoint = "enabled"
+      
+  }
 
   vpc_security_group_ids = [
   "${aws_security_group.web-node.id}"]
@@ -12,9 +19,6 @@ sudo apt-get update
 sudo apt-get install -y apache2
 sudo systemctl start apache2
 sudo systemctl enable apache2
-export AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMAAA
-export AWS_SECRET_ACCESS_KEY=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
-export AWS_DEFAULT_REGION=us-west-2
 echo "<h1>Deployed via Terraform</h1>" | sudo tee /var/www/html/index.html
 EOF
   tags = merge({
@@ -34,7 +38,7 @@ EOF
 resource "aws_ebs_volume" "web_host_storage" {
   # unencrypted volume
   availability_zone = "${var.region}a"
-  #encrypted         = false  # Setting this causes the volume to be recreated on apply 
+  encrypted         = true  # Setting this causes the volume to be recreated on apply 
   size = 1
   tags = merge({
     Name = "${local.resource_prefix.value}-ebs"
@@ -81,25 +85,28 @@ resource "aws_security_group" "web-node" {
   vpc_id      = aws_vpc.web_vpc.id
 
   ingress {
+    description = "inbound"
     from_port = 80
     to_port   = 80
     protocol  = "tcp"
     cidr_blocks = [
-    "0.0.0.0/0"]
+    "10.0.0.1/32"]
   }
   ingress {
+    description = "inbound"
     from_port = 22
     to_port   = 22
     protocol  = "tcp"
     cidr_blocks = [
-    "0.0.0.0/0"]
+    "10.0.0.1/32"]
   }
   egress {
+    description = "outbound"
     from_port = 0
     to_port   = 0
     protocol  = "-1"
     cidr_blocks = [
-    "0.0.0.0/0"]
+    "10.0.0.1/32"]
   }
   depends_on = [aws_vpc.web_vpc]
   tags = {
@@ -136,7 +143,7 @@ resource "aws_subnet" "web_subnet" {
   vpc_id                  = aws_vpc.web_vpc.id
   cidr_block              = "172.16.10.0/24"
   availability_zone       = "${var.region}a"
-  map_public_ip_on_launch = true
+  map_public_ip_on_launch = false
 
   tags = merge({
     Name = "${local.resource_prefix.value}-subnet"
@@ -156,7 +163,7 @@ resource "aws_subnet" "web_subnet2" {
   vpc_id                  = aws_vpc.web_vpc.id
   cidr_block              = "172.16.11.0/24"
   availability_zone       = "${var.region}b"
-  map_public_ip_on_launch = true
+  map_public_ip_on_launch = false
 
   tags = merge({
     Name = "${local.resource_prefix.value}-subnet2"
@@ -271,7 +278,17 @@ resource "aws_flow_log" "vpcflowlogs" {
 resource "aws_s3_bucket" "flowbucket" {
   bucket        = "${local.resource_prefix.value}-flowlogs"
   force_destroy = true
-
+  versioning {
+    enabled = true
+  }
+  server_side_encryption_configuration{
+    rule{
+        apply_server_side_encryption_by_deafult {
+         sse_algorithm = "AES256" 
+        }
+    }
+    
+  }
   tags = merge({
     Name        = "${local.resource_prefix.value}-flowlogs"
     Environment = local.resource_prefix.value
