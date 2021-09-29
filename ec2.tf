@@ -2,8 +2,10 @@ resource "aws_instance" "web_host" {
   # ec2 have plain text secrets in user data
   ami           = "${var.ami}"
   instance_type = "t2.nano"
+   root_block_device {
+   encrypted     = true
+ }
   ebs_optimized = true
-  encrypted= true
   monitoring = true
   metadata_options{
       http_endpoint = "disabled"
@@ -52,6 +54,15 @@ resource "aws_ebs_volume" "web_host_storage" {
     git_repo             = "terragoat"
     yor_trace            = "c5509daf-10f0-46af-9e03-41989212521d"
   })
+}
+resource "aws_backup_selection" "backup_good" {
+  iam_role_arn = "arn"
+  name         = "tf_example_backup_selection"
+  plan_id      = "123456"
+
+  resources = [
+    aws_ebs_volume.web_host_storage.arn
+  ]
 }
 
 resource "aws_ebs_snapshot" "example_snapshot" {
@@ -137,6 +148,9 @@ resource "aws_vpc" "web_vpc" {
     git_repo             = "terragoat"
     yor_trace            = "9bf2359b-952e-4570-9595-52eba4c20473"
   })
+}
+resource "aws_default_security_group" "default" {
+  vpc_id = aws_vpc.web_vpc.id
 }
 
 resource "aws_subnet" "web_subnet" {
@@ -281,14 +295,35 @@ resource "aws_s3_bucket" "flowbucket" {
   versioning {
     enabled = true
   }
-  server_side_encryption_configuration{
-    rule{
-        apply_server_side_encryption_by_deafult {
-         sse_algorithm = "AES256" 
-        }
+  replication_configuration {
+   role = aws_iam_role.replication.arn
+    rules {
+    id     = "foobar"
+      prefix = "foo"
+       status = "Enabled"
+
+   destination {
+      bucket        = aws_s3_bucket.destination.arn
+      storage_class = "STANDARD"
     }
-    
+   }
+ }
+   dynamic "logging" {
+    for_each = var.logging
+    content {
+       target_bucket = logging.value["target_bucket"]
+       target_prefix = "log/${var.s3_bucket_name}"
+      }
+ }
+  server_side_encryption_configuration {
+  rule {
+     apply_server_side_encryption_by_default {
+       kms_master_key_id = aws_kms_key.mykey.arn
+       sse_algorithm     = "aws:kms"
+      }
   }
+  }
+}
   tags = merge({
     Name        = "${local.resource_prefix.value}-flowlogs"
     Environment = local.resource_prefix.value
@@ -302,6 +337,12 @@ resource "aws_s3_bucket" "flowbucket" {
     git_repo             = "terragoat"
     yor_trace            = "f058838a-b1e0-4383-b965-7e06e987ffb1"
   })
+}
+resource "aws_s3_bucket_public_access_block" "access_good_1" {
+  bucket = aws_s3_bucket.flowbucket.id
+
+  block_public_acls   = true
+  block_public_policy = true
 }
 
 output "ec2_public_dns" {
