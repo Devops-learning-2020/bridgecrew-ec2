@@ -136,6 +136,7 @@ resource "aws_subnet" "web_subnet" {
   vpc_id                  = aws_vpc.web_vpc.id
   cidr_block              = "172.16.10.0/24"
   availability_zone       = "${var.region}a"
+  map_public_ip_on_launch = true
 
   tags = merge({
     Name = "${local.resource_prefix.value}-subnet"
@@ -284,9 +285,6 @@ resource "aws_s3_bucket" "flowbucket" {
     git_repo             = "terragoat"
     yor_trace            = "f058838a-b1e0-4383-b965-7e06e987ffb1"
   })
-  versioning {
-    enabled = true
-  }
 }
 
 output "ec2_public_dns" {
