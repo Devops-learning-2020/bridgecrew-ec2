@@ -151,6 +151,9 @@ resource "aws_vpc" "web_vpc" {
 }
 resource "aws_default_security_group" "default" {
   vpc_id = aws_vpc.web_vpc.id
+tags = {
+  environment = "develop"
+}
 }
 
 resource "aws_subnet" "web_subnet" {
@@ -171,6 +174,7 @@ resource "aws_subnet" "web_subnet" {
     git_repo             = "terragoat"
     yor_trace            = "0345f650-d280-4ca8-86c9-c71c38c0eda8"
   })
+  
 }
 
 resource "aws_subnet" "web_subnet2" {
