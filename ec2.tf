@@ -291,6 +291,10 @@ resource "aws_flow_log" "vpcflowlogs" {
 resource "aws_kms_key" "s3key" {
   description             = "KMS key 1"
   enable_key_rotation = true
+   tags = {
+  Environment = "dev"
+  Owner = "apps-team"
++ }
 }
 resource "aws_s3_bucket" "flowbucket" {
   bucket        = "${local.resource_prefix.value}-flowlogs"
